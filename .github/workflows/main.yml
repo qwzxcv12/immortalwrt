@@ -14,30 +14,33 @@ jobs:
     - name: Init build deps
       run: |
         sudo apt update
-        sudo apt install -y build-essential libncurses5-dev gawk git wget unzip \
-          python3 rsync qemu-utils libssl-dev
+        sudo apt install -y build-essential libncurses5-dev gawk git wget unzip python3 rsync
 
     - name: Clone OpenWrt
       run: |
-        git clone https://github.com/openwrt/openwrt.git openwrt
+        git clone https://github.com/immortalwrt/immortalwrt.git openwrt
         cd openwrt
         ./scripts/feeds update -a
         ./scripts/feeds install -a
 
-    - name: Add AX88179 driver
+    - name: Configure
       run: |
         cd openwrt
+        # Tạo config cơ bản
+        make defconfig
+        # Thêm driver USB LAN AX88179/178a
         echo "CONFIG_PACKAGE_kmod-usb-net=y" >> .config
-        echo "CONFIG_PACKAGE_kmod-usb-net-ax88179=y" >> .config
+        echo "CONFIG_PACKAGE_kmod-usb-net-ax88179_178a=y" >> .config
+        # Có thể thêm driver khác nếu muốn
         make defconfig
 
-    - name: Build firmware
+    - name: Build
       run: |
         cd openwrt
-        make -j$(nproc)
+        make -j$(nproc) || make -j1 V=s
 
     - name: Upload firmware
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: openwrt-firmware
-        path: openwrt/bin/targets/
+        path: openwrt/bin/targets/**/*
