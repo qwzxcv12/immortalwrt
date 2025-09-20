@@ -1,0 +1,43 @@
+name: Build OpenWrt
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Init build deps
+      run: |
+        sudo apt update
+        sudo apt install -y build-essential libncurses5-dev gawk git wget unzip \
+          python3 rsync qemu-utils libssl-dev
+
+    - name: Clone OpenWrt
+      run: |
+        git clone https://github.com/openwrt/openwrt.git openwrt
+        cd openwrt
+        ./scripts/feeds update -a
+        ./scripts/feeds install -a
+
+    - name: Add AX88179 driver
+      run: |
+        cd openwrt
+        echo "CONFIG_PACKAGE_kmod-usb-net=y" >> .config
+        echo "CONFIG_PACKAGE_kmod-usb-net-ax88179=y" >> .config
+        make defconfig
+
+    - name: Build firmware
+      run: |
+        cd openwrt
+        make -j$(nproc)
+
+    - name: Upload firmware
+      uses: actions/upload-artifact@v3
+      with:
+        name: openwrt-firmware
+        path: openwrt/bin/targets/
